@@ -7,7 +7,9 @@ In this chapter, we select the most widely used PRS methods and introduce their 
 
 ## Folder Instruction
 
--- code: Main Rmarkdown files for the application of PRS software
+- **code**: Main Rmarkdown files for the application of PRS software
+- **function**: R scripts with key functions
+- **data**:
 
 ## Usage
 
