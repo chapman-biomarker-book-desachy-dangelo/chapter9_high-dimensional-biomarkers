@@ -1,5 +1,5 @@
-# mtPRSFIMEL
-Improving multi-trait polygenic risk score prediction using fine-mapping and ensemble learning
+# Chapter 9
+High-Dimensional Genetic Biomarkers and Polygenic Risk Scores: Advanced Methods for Disease and Drug Response Prediction
 
 ## Overview
 mtPRSFIMEL package (Zhai et al., 2025) implements a novel multi-trait polygenic risk score (mtPRS) method, mtPRS-FIMEL. This method tackles key challenges in existing multi-trait PRS approaches by integrating information from three levels:
