@@ -9,16 +9,15 @@ In this chapter, we select the most widely used PRS methods and introduce their 
 
 - **code**: Main Rmarkdown files for the application of PRS software
 - **function**: R scripts with key functions
-- **data**: Include `base` for data bundle simulations, **input** as simulated inputs for specific methods (i.e., PRScs and PRS-PGx-TL), and **ref_panel** as reference panels for specific methods (i.e., Lassosum and PRScs)
+- **data**: Include `base` for data bundle simulations, `input` as simulated inputs for specific methods (i.e., PRScs and PRS-PGx-TL), and `ref_panel` as reference panels for specific methods (i.e., Lassosum and PRScs)
 - **result**: Pre-specified directories to save results from specific methods (i.e., LDpred2, PRScs, and PRS-PGx-TL)
 - **software**: Software for PRScs and PRS-PGx-TL
 
-## Usage
+## PRS Methods Instruction
 
-### Step 1: PolyPred
-
-Update effect size estimates in disease GWAS summary statistics by conducting PolyPred (Weissbrod et al., 2022) with fine-mapping. Details can be found in **PolyPred** folder (**run_polypred_sim_example.sh**).
-
-### Step 2: mtPRS-FIMEL
-
-Run mtPRS-FIMEL with refined effect size estimates. Details can be found in **doc** folder for mtPRSFIMEL user manual (**mtPRSFIMEL_0.1.0.pdf**), and **vignettes** folder for a demo illustrating how to use our softwares (**README.Rmd**).
+- **Lassosum**: R package based method; Need to specify the reference panel
+- **PRS-CS**: Python script based method; Run Python script in Terminal for PRS-CS analysis; Need to specify the reference panel, the bim file, the path to the software, and the path to save results
+- **LDpred2**: R package based method; Need to specify the path to save intermediate results
+- **PRS-PGx-L/GL/SGL**: R package based method; Require individual-level PGx data
+- **PRS-PGx-Bayes**: R package based method; Need individual-level reference genotype data
+- **PRS-PGx-TL**: R scripts based pipeline; Run multiple R scripts in Terminal for PRS-PGx-TL analysis - the next R script will take results from the previous R script as inputs
