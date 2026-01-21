@@ -1,0 +1,100 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-07-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+## LOAD FUNCTIONS
+
+```{r}
+library(lmtest)
+library(data.table)
+library(dplyr)
+
+dir <- "/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle"
+
+source(paste0(dir, "/function/data_generation.R"))
+```
+
+## LOAD INPUT DATA
+
+```{r}
+load(paste0(dir, "/data/base/geno.Rdata")) # genotype data
+load(paste0(dir, "/data/base/bim.geno.Rdata")) # SNP information
+load(paste0(dir, "/data/base/se.Rdata")) # standard error
+```
+
+## SIMULATE TRUE EFFECT SIZES
+
+```{r}
+eff <- generate.beta(pcausal = 0.02, nsnp = 500, nblock = 10, rhoY = 0.95, rhoE = 0.8, rhoC = 0.95, h2 = 0.5, geno = geno)
+```
+
+## SIMULATE GENERAL DATA BUNDLE
+
+```{r}
+df <- generate.data(geno = geno, bim.geno = bim.geno, eff = eff, se = se, h2.pgx = 0.2, h2.dis = 0.3)
+
+ss.dis <- df$ss.dis # disease GWAS summary statistics
+ss.pgx <- df$ss.pgx # PGx GWAS summary statistics
+dat.train.pgx <- df$dat.train.pgx # training dataset for PGx study simulation
+dat.validation.pgx <- df$dat.validation.pgx # validation dataset for PGx study simulation
+dat.test.pgx <- df$dat.test.pgx # testing dataset for PGx study simulation
+dat.train.dis <- df$dat.train.dis # training dataset for disease GWAS simulation
+dat.validation.dis <- df$dat.validation.dis # validation dataset for disease GWAS simulation
+dat.test.dis <- df$dat.test.dis # testing dataset for disease GWAS simulation
+eff.ori <- df$eff.ori # simulated effect sizes including mu, (b, a), phi, (beta, alpha)
+```
+
+```
+save(ss.dis, ss.pgx, dat.train.dis, dat.validation.dis, dat.test.dis, dat.train.pgx, dat.validation.pgx, dat.test.pgx, eff.ori, bim.geno,
+     file = paste0(dir, "/data/data_bundle.Rdata"))
+```
+
+#### SIMULATE INPUT DATASET FOR PRS-CS
+
+```{r}
+sumstats <- ss.dis[,c(1,2,3,4,5,7,8)]
+colnames(sumstats) <- c("CHR","POS","SNP","A1","A2","BETA","SE")
+rownames(sumstats) <- NULL
+```
+
+```
+write.table(sumstats, file = paste0(dir, "/data/input/PRScs/sumstats.txt"), row.names=FALSE)
+```
+
+#### SIMULATE INPUT DATASET FOR PRS-PGx-TL
+
+```{r}
+ss <- ss.dis[,c(1,2,3,4,5,7,9)]
+colnames(ss) <- c("chr","BP","SNP","Eff","Ref","Beta","Pval")
+
+G.test <- dat.test.pgx[,-c(1,2)] %>% as.matrix()
+prs.g <- G.test %*% ss.dis$beta %>% as.vector()
+ID <- paste0("id",1:nrow(dat.test.pgx))
+pheno <- cbind.data.frame(ID=ID, dat.test.pgx[,c(1,2)], prs_g=prs.g)
+rownames(pheno) <- NULL
+
+G <- dat.test.pgx[,-c(1,2)]
+colnames(G) <- ss.dis$RSID
+rownames(G) <- ID
+
+snp.info <- ss.dis[,c(1,2,3,4,5,6)]
+colnames(snp.info) <- c("Chromosome","Position","SNP","Eff","Ref","ID")
+```
+
+```
+write.table(ss, file = paste0(dir, "/data/input/PRS-PGx-TL/sumstats.txt"), row.names = FALSE)
+write.table(pheno, file = paste0(dir, "/data/input/PRS-PGx-TL/pheno.txt"), row.names = FALSE)
+save(G, file = paste0(dir, "/data/input/PRS-PGx-TL/geno.Rdata"))
+write.table(snp.info, file = paste0(dir, "/data/input/PRS-PGx-TL/snp_info.txt"), row.names = FALSE)
+```
+
+
+
+

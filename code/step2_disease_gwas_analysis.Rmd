@@ -1,0 +1,92 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-07-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+## LOAD FUNCTIONS AND DATA
+
+```{r}
+library(devtools)
+library(data.table)
+library(lassosum)
+library(bigsnpr)
+library(PRSPGx)
+library(dplyr)
+
+dir <- "/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle"
+
+source(paste0(dir, "/function/R_function.R"))
+load(paste0(dir, "/data/data_bundle.Rdata"))
+```
+
+## MAIN ANALYSES
+
+#### Lassosum
+
+```{r}
+cor <- p2cor(p = ss.dis$p, n = ss.dis$N, sign = ss.dis$beta)
+
+out <- lassosum.pipeline(cor = cor, chr = ss.dis$CHR, pos = ss.dis$POS, 
+                         A1 = ss.dis$A1, A2 = ss.dis$A2,
+                         ref.bfile = paste0(dir, '/data/ref_panel/Lassosum/EUR_19'),
+                         LDblocks = "EUR.hg19")
+
+eff <- pseudovalidate(out, destandardize = T)
+```
+
+```{r}
+beta.est.lassosum <- eff$best.beta
+```
+
+#### PRS-CS
+
+```
+# Run Python script in Terminal for PRS-CS analysis
+
+python /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/software/PRScs/PRScs.py --ref_dir=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/ref_panel/PRScs/ldblk_1kg_eur --bim_prefix=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/base/bim_glgc --sst_file=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRScs/sumstats.txt --n_gwas=276663 --chrom=19 --out_dir=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRScs
+```
+
+#### LDpred2
+
+```{r}
+# Prepare inputs for LDpred2
+
+sumstats <- ss.dis[,c(1,2,3,4,5,7,8,10)]
+colnames(sumstats) <- c("chr","pos","snp","a0","a1","beta","beta_se","n_eff")
+
+G <- dat.validation.dis[,-1] %>% as.matrix()
+corr0 <- cor(G)
+corr0 <- as(corr0, "dgCMatrix")
+tmp <- tempfile(tmpdir = paste0(dir, "/result/LDpred2/extension"))
+corr <- as_SFBM(corr0, tmp)
+
+params <- expand.grid(p = c(0.005, 0.01, 0.02, 0.03, 0.04, 0.05), h2 = c(0.0001, 0.000125, 0.00015, 0.000175, 0.0002, 0.0003), sparse = FALSE)
+
+NCORES <- nb_cores()
+```
+
+```{r}
+# Determine optimal tuning parameters
+
+beta_grid <- snp_ldpred2_grid(corr, sumstats, params, ncores = NCORES)
+
+optimal.grid.dis(dat.validation.dis, beta_grid, params)
+```
+
+```{r}
+params <- expand.grid(p = c(0.05), h2 = c(1e-04), sparse = FALSE)
+
+beta.est.ldpred2 <- snp_ldpred2_grid(corr, sumstats, params, ncores = NCORES) %>% as.vector()
+```
+
+
+
+
+
+

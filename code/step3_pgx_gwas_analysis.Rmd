@@ -1,0 +1,159 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-07-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+## LOAD FUNCTIONS AND DATA
+
+```{r}
+library(devtools)
+library(data.table)
+library(lassosum)
+library(bigsnpr)
+library(PRSPGx)
+
+dir <- "/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle"
+
+source(paste0(dir, "/function/R_function.R"))
+load(paste0(dir, "/data/data_bundle.Rdata"))
+```
+
+## MAIN ANALYSES
+
+#### Lassosum
+
+```{r}
+cor <- p2cor(p = ss.dis$p, n = ss.dis$N, sign = ss.dis$beta)
+
+out <- lassosum.pipeline(cor = cor, chr = ss.dis$CHR, pos = ss.dis$POS, 
+                         A1 = ss.dis$A1, A2 = ss.dis$A2,
+                         ref.bfile = paste0(dir, '/data/ref_panel/Lassosum/EUR_19'),
+                         LDblocks = "EUR.hg19")
+
+eff <- pseudovalidate(out, destandardize=T)
+```
+
+```{r}
+beta.est.lassosum <- eff$best.beta
+```
+
+#### PRS-CS
+
+```
+# Run Python script in Terminal for PRS-CS analysis
+
+python /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/software/PRScs/PRScs.py --ref_dir=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/ref_panel/PRScs/ldblk_1kg_eur --bim_prefix=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/base/bim_glgc --sst_file=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRScs/sumstats.txt --n_gwas=276663 --chrom=19 --out_dir=/home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRScs
+```
+
+#### LDpred2
+
+```{r}
+# Prepare inputs for LDpred2
+
+sumstats <- ss.dis[,c(1,2,3,4,5,7,8,10)]
+colnames(sumstats) <- c("chr","pos","snp","a0","a1","beta","beta_se","n_eff")
+
+G <- dat.validation.pgx[,-c(1,2)] %>% as.matrix()
+corr0 <- cor(G)
+corr0 <- as(corr0, "dgCMatrix")
+tmp <- tempfile(tmpdir = paste0(dir, "/result/LDpred2/extension"))
+corr <- as_SFBM(corr0, tmp)
+
+params <- expand.grid(p = c(0.005, 0.01, 0.02, 0.03, 0.04, 0.05), h2 = c(0.0001, 0.000125, 0.00015, 0.000175, 0.0002, 0.0003), sparse = FALSE)
+
+NCORES <- nb_cores()
+```
+
+```{r}
+# Determine optimal tuning parameters
+
+beta_grid <- snp_ldpred2_grid(corr, sumstats, params, ncores = NCORES)
+
+optimal.grid.pgx(dat.validation.pgx, beta_grid, params)
+```
+
+```{r}
+params <- expand.grid(p = c(0.05), h2 = c(1e-04), sparse = FALSE)
+
+beta.est.ldpred2 <- snp_ldpred2_grid(corr, sumstats, params, ncores = NCORES) %>% as.vector()
+```
+
+#### PRS-PGx-L/GL/SGL
+
+```{r}
+LAMBDA.L <- seq(0, 0.1, 0.02)
+LAMBDA.GL <- seq(0, 0.1, 0.02)
+LAMBDA.SGL <- c(0.0005, 0.00075, 0.001, 0.00125, 0.0015)
+
+optimal.lambda(dat.train.pgx, dat.validation.pgx, LAMBDA = LAMBDA.L, method = 1) # method = 1: PRS-PGx-L
+optimal.lambda(dat.train.pgx, dat.validation.pgx, LAMBDA = LAMBDA.GL, method = 2) # method = 2: PRS-PGx-GL
+optimal.lambda(dat.train.pgx, dat.validation.pgx, LAMBDA = LAMBDA.SGL, method = 3) # method = 3: PRS-PGx-SGL
+```
+
+```{r}
+mod.L = PRS_PGx_Lasso(Y=dat.train.pgx$Y, Tr=dat.train.pgx$Tr, G=dat.train.pgx[,-c(1,2)], intercept = TRUE, lambda = 0.02, method = 1, alpha = 0.5)
+mod.GL = PRS_PGx_Lasso(Y=dat.train.pgx$Y, Tr=dat.train.pgx$Tr, G=dat.train.pgx[,-c(1,2)], intercept = TRUE, lambda = 0.02, method = 2, alpha = 0.5)
+mod.SGL = PRS_PGx_Lasso(Y=dat.train.pgx$Y, Tr=dat.train.pgx$Tr, G=dat.train.pgx[,-c(1,2)], intercept = TRUE, lambda = 5e-04, method = 3, alpha = 0.5)
+
+beta.est.prspgxl.g <- mod.L$coef.G
+beta.est.prspgxl.gt <- mod.L$coef.TG
+beta.est.prspgxgl.g <- mod.GL$coef.G
+beta.est.prspgxgl.gt <- mod.GL$coef.TG
+beta.est.prspgxsgl.g <- mod.SGL$coef.G
+beta.est.prspgxsgl.gt <- mod.SGL$coef.TG
+```
+
+#### PRS-PGx-Bayes
+
+```{r}
+# Prepare inputs for PRS-PGx-Bayes
+
+G_reference <- dat.validation.pgx[,-c(1,2)] %>% as.matrix()
+
+maf <- apply(G_reference/2, 2, mean)
+G_INFO <- cbind.data.frame(ss.dis[,c(1,2)], ss.pgx[,c(2,5,8,9)], MAF=maf)
+colnames(G_INFO) <- c("ID","POS","beta_hat","alpha_hat","pvalue","N","MAF")
+
+sd.y <- sd(dat.train.pgx$Y)
+
+meanT <- 0.5
+
+PGx_GWAS <- list(G_INFO=G_INFO, sd.y=sd.y, meanT=meanT)
+```
+
+```{r}
+paras <- c(1, 1)
+
+mod <- PRS_PGx_Bayes(PGx_GWAS, G_reference, paras = paras, n.itr = 50, n.burnin = 20, n.gap = 2)
+```
+
+```{r}
+beta.est.prspgxbayes.g <- mod$coef.G
+beta.est.prspgxbayes.gt <- mod$coef.TG
+```
+
+#### PRS-PGx-TL
+
+```
+# Run R scripts in Terminal for PRS-PGx-TL analysis
+
+## Step 1
+Rscript s1.R /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/sumstats.txt /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/pheno.txt /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/geno.Rdata /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/snp_info.txt zero 500 /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRS-PGx-TL/s1_output
+
+## Step 2
+Rscript s2.R /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/pheno.txt zero /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRS-PGx-TL/s1_output /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRS-PGx-TL/s2_output yes
+
+## Step 3
+Rscript s3.R /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/sumstats.txt /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/pheno.txt /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/geno.Rdata /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/data/input/PRS-PGx-TL/snp_info.txt zero 500 best_R2 /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRS-PGx-TL/s2_output /home2/zhaiso/PROJECT/Book_PGxPRS/Bundle/result/PRS-PGx-TL/s3_output
+```
+
+
+
+
+
