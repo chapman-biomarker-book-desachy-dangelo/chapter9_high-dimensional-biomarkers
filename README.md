@@ -2,20 +2,8 @@
 High-Dimensional Genetic Biomarkers and Polygenic Risk Scores: Advanced Methods for Disease and Drug Response Prediction
 
 ## Overview
-mtPRSFIMEL package (Zhai et al., 2025) implements a novel multi-trait polygenic risk score (mtPRS) method, mtPRS-FIMEL. This method tackles key challenges in existing multi-trait PRS approaches by integrating information from three levels:
-- variant-level: causal variants identified through fine-mapping analysis;
-- trait-level: data from multiple genetically correlated traits;
-- method-level: an ensemble learning framework that optimally combines complementary PRS methods, including mtPRS-PCA (Zhai et al., 2023), mtPRS-ML, and stPRSs.
 
-## Installation
-
-mtPRSFIMEL R package requires R version >= 4.0.3.
-
-```
-library(devtools)
-devtools::install_github("yaowuliu/ACAT") # Need to install ACAT first through the Github
-devtools::install_github("zhaiso1/mtPRSFIMEL")
-```
+In this chapter, we select the most widely used PRS methods and introduce their software. These software tools are readily accessible for download from either GitHub or CRAN. To install and use them, users need to have R, Python, and/or Linux environment installed on their systems. Typically, these software tools require one or more inputs from disease GWAS summary statistics, PGx GWAS summary statistics, and individual-level disease GWAS or PGx GWAS data (training, validation, and testing). Additionally, users may need to provide the prefix of the bim file corresponding to the target dataset, as well as a reference panel with SNP LD information (e.g., from the 1000 Genomes Project), which can be supplied in either PLINK binary format (bed, bim, fam) or HDF5 format.
 
 ## Usage
 
