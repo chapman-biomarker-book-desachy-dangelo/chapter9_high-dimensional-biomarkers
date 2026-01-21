@@ -9,7 +9,7 @@ In this chapter, we select the most widely used PRS methods and introduce their 
 
 - **code**: Main Rmarkdown files for the application of PRS software
 - **function**: R scripts with key functions
-- **data**: Include **base** for data bundle simulations, **input** as simulated inputs for specific methods (i.e., PRScs and PRS-PGx-TL), and **ref_panel** as reference panels for specific methods (i.e., Lassosum and PRScs)
+- **data**: Include 'base' for data bundle simulations, **input** as simulated inputs for specific methods (i.e., PRScs and PRS-PGx-TL), and **ref_panel** as reference panels for specific methods (i.e., Lassosum and PRScs)
 - **result**: Pre-specified directories to save results from specific methods (i.e., LDpred2, PRScs, and PRS-PGx-TL)
 - **software**: Software for PRScs and PRS-PGx-TL
 
