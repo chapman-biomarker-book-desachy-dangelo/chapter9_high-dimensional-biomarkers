@@ -1,5 +1,4 @@
-# Chapter 9
-High-Dimensional Genetic Biomarkers and Polygenic Risk Scores: Advanced Methods for Disease and Drug Response Prediction
+# Chapter 9: High-Dimensional Genetic Biomarkers and Polygenic Risk Scores: Advanced Methods for Disease and Drug Response Prediction
 
 ## Overview
 
